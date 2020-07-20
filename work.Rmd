@@ -1,0 +1,248 @@
+---
+title: "COVID-19 and Mental Health"
+author: "Narek Karimyan"
+date: "7/20/2020"
+output:
+  pdf_document:
+    toc: true
+    number_sections: true
+    fig_caption: yes        
+    includes:  
+      in_header: Untitled.tex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, message = F, warning = F, fig.align = "center", global.par = TRUE)
+library(data.table)
+library(tidyverse)
+library(openxlsx)
+library(RColorBrewer)
+library(patchwork)
+```
+
+```{r}
+
+data <- read.xlsx('covid-06-27-2020.xlsx', sheet = 1, colNames = TRUE)
+
+setDT(data)
+names(data)[1] <- 'age'
+
+data[, `:=`(userAgent = NULL, guid = NULL, ip = NULL, updatedAt = NULL, createdAt = NULL, zipCode = NULL)]
+
+data <- data %>% mutate(mentalHealthImpact = gsub(pattern = "Impact", replacement = "", mentalHealthImpact))
+
+data <- data %>% 
+  mutate(gender = case_when(gender %in% c('other', 'notWantToShare', 'notShared') ~ 'other', TRUE ~ gender))
+
+data <- data %>% mutate(age = gsub(pattern = "interval_", replacement = "", age))
+data <- data %>% mutate(age = gsub(pattern = "_", replacement = "-", age))
+
+data <- data %>% mutate_if(is.character, as.factor)
+
+total_virus_positive <- data %>%
+  filter(virusTest=="positive") %>%
+  summarise(n())
+
+total_virus_positive_significant <- data %>%
+  filter(virusTest=="positive" & mentalHealthImpact == "significant") %>%
+  summarise(n()) / total_virus_positive * 100
+
+total_virus_positive_some <- data %>%
+  filter(virusTest=="positive" & mentalHealthImpact == "some") %>%
+  summarise(n()) / total_virus_positive * 100
+
+total_virus_negative <- data %>%
+  filter(virusTest=="negative") %>%
+  summarise(n())
+
+total_virus_negative_significant <- data %>%
+  filter(virusTest=="negative" & mentalHealthImpact == "significant") %>%
+  summarise(n()) / total_virus_negative * 100
+
+total_virus_negative_some <- data %>%
+  filter(virusTest=="negative" & mentalHealthImpact == "some") %>%
+  summarise(n()) / total_virus_negative * 100
+
+```
+
+
+\pagebreak
+
+# The problem/data description
+
+## About the report
+
+Nowadays, it is quite important to understand and analyze the pandemic and coronavirus. Specifically, it is essental to find out the consequences the virus bears. One of the most important factors is the impact on the mental health. In fact, mental health is equally important for a human being  as phyiscal health. Therefore, this analysis will tyzery to anal the impact that the pandemic and coronavirus afflict on people's mental health.
+
+## Data description
+
+The data for this analysis is provided by NetGenix (https://infogears.org/).
+
+The data is collectd from individuals living in US showing virus test results, antibody test results, symptoms the individuals had and so on.
+
+## Getting familiar with data
+
+Let's introduce ourselves to the data with some graphs. 
+
+The below graph shows age distribution in the data. Most of the individuals fall in age interval from 36-75.
+
+```{r fig.width=4, fig.height=4}
+ggplot(data, aes(x = factor(1), fill = age)) + geom_bar(width = 1) + coord_polar(theta = 'y') +
+  scale_fill_brewer(palette = "Set1") + 
+  labs(x="", y="", title = "Age Distribution", fill = "Age") + 
+  theme(plot.background  = element_rect(colour = "white")) +
+  theme_void()
+```
+\pagebreak
+Next, in the below graph we can see that data has more female individuals' records than male ones.
+```{r fig.width=4, fig.height=4}
+ggplot(data, aes(x = factor(1), fill = gender)) + geom_bar(width = 1) + coord_polar(theta = 'y') +
+  scale_fill_brewer(palette = "Set1") + 
+  labs(x="", y="", title = "Gender Distribution", fill = "Gender") + 
+  theme(plot.background  = element_rect(colour = "white")) +
+  theme_void()
+```
+
+Let's combine these two factors in a bar plot. We have more females in every age category. Specifcally, they prevail in the age interval from 36-75.
+
+```{r fig.width=4, fig.height=4}
+ggplot(data, aes(x = age, fill = gender)) + geom_bar() +
+  scale_fill_brewer(palette = "Set1") + 
+  labs(x='Age', title = "Age Distribution by Gender", fill = "Gender") + 
+  theme(plot.background  = element_rect(colour = "white")) + theme_bw() + 
+  theme(axis.text.x = element_text(angle = 40))
+```
+It is important to understand how the data is distributed by virus test results. Although most of the individuals recorded in the data have not been tested, we still have some portion of negative and positive virus test results, which can be observed in the below graph.
+```{r fig.width=4, fig.height=4}
+ggplot(data, aes(x = factor(1), fill = virusTest)) + geom_bar(width = 1) + coord_polar(theta = 'y') +
+  scale_fill_brewer(palette = "Set1") + 
+  labs(x="", y="", title = "Virus Test Distribution", fill = "Virus Test Status") + 
+  theme(plot.background  = element_rect(colour = "white")) +
+  theme_void()
+```
+The following plot represents virus test results distribution by age and gender. We can see positive virus test results for male individuals in age from 26-45 and from 75 and more. On the other hand, female individuals have less positive test results and most of the positive ones are in 26-35.
+```{r fig.width=5.5, fig.height=3.5}
+ggplot(data, aes(x = age, fill = virusTest)) + geom_bar(position='fill') +
+  scale_fill_brewer(palette = "Set1") + 
+  labs(x='Age', y='Percentage', title = "Virus Test Distribution by Age and Gender", fill = "Virus Test Status") + 
+  theme(plot.background  = element_rect(colour = "white")) + theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90))+facet_grid(.~gender)
+```
+
+
+# Main hypothesis
+
+The hypothesis of this study is whether the virus has an impact on mental health of an individual.
+
+# Analysis
+
+Firstly, let's analyze the level of mental health impact that the individuals had, on which we will focus primarily on in this study. Surprisingly, most of the individuals had **some** impact on their mental health and some of the individuals had **significant** impact.
+```{r fig.width=4, fig.height=4}
+ggplot(data, aes(x = factor(1), fill = mentalHealthImpact)) + geom_bar(width = 1) + 
+  coord_polar(theta = 'y') +
+  scale_fill_brewer(palette = "Set1") + 
+  labs(x="", y="", title = "Mental Health Impact Distribution", fill = "Mental Health Impact") + 
+  theme(plot.background  = element_rect(colour = "white")) +
+  theme_void()
+```
+\pagebreak
+Mental health impact distribution showed in the figure below tells us that female individuals in all age categories had **some** or **signifcant** mental health impact, while male individuals show some slightly better results in having less percentage of mental health impact.
+```{r fig.width=7, fig.height=4}
+data %>% filter(gender != 'other') %>% ggplot(aes(x = age, fill = mentalHealthImpact)) + geom_bar(position='fill') +
+  scale_fill_brewer(palette = "Set1") + 
+  labs(x='Age', y='Percentage', title = "Mental Health Impact Distribution by Age and Gender", fill = "Mental Health Impact") + 
+  theme(plot.background  = element_rect(colour = "white")) + theme_bw() + 
+  theme(axis.text.x = element_text(angle = 40))+facet_grid(.~gender)
+```
+\pagebreak
+Now, let's consider the relation of virus test result and mental health impact. In the below graph we can see that mental health impact does not change much in accordance to virus test results. Moreover, individuals with positive virus test have lower percentage of mental health impact indicated as **significant**. 
+
+| Positive test with significant mental health impact: `r round(total_virus_positive_significant,2)`% 
+| vs. 
+| Negative test with significant mental health impact: `r round(total_virus_negative_significant,2)`% 
+
+| Positive test with some mental health impact: `r round(total_virus_positive_some,2)`% 
+| vs. 
+| Negative test with some mental health impact: `r round(total_virus_negative_some,2)`% 
+
+| Therefore, one may conclude that virus test results have no correlation on mental health. And more importantly, having a positive virus test does not affect mental health either.
+
+```{r fig.width=5, fig.height=4}
+data %>% filter(virusTest != 'notTested' & virusTest != 'awaitingResults') %>% 
+  ggplot(aes(x = virusTest, fill = mentalHealthImpact)) + geom_bar(position = 'fill') +
+  scale_fill_brewer(palette = "Set1") + 
+  labs(x='Virus Test Status', y='Percentage', title = "Virus Test Distribution by Mental Health Impact", 
+       fill = "Mental Health Impact") + 
+  theme(plot.background  = element_rect(colour = "white")) + theme_bw()
+```
+\pagebreak
+Furthermore, let's analyze the impact of health issues on mental health. The below plot shows that those individuals, who have **some** or **chronic** health issues are more prone to have mental health impact. This may imply that chronic health issues can lead to mental health issues.
+
+```{r fig.width=5, fig.height=4}
+data %>% filter(virusTest != 'notTested' & virusTest != 'awaitingResults') %>%  
+  ggplot(aes(x = healthIssues, fill = mentalHealthImpact)) + geom_bar(position = 'fill') +
+  scale_fill_brewer(palette = "Set1") + 
+  labs(x='Health Issues', y='Percentage', title = "Health Issues Distribution by Mental Health Impact", fill = "Mental Health Impact") + 
+  theme(plot.background  = element_rect(colour = "white")) + theme_bw()
+```
+
+Now when we have seen some correlation between health issues and mental health impact, let's dig deeper and try to analyze the symptoms individuals had. Individuals, who suffered **significant** mental health impact, have high levels of boydache, fatigue and sore throat.
+
+```{r fig.width=7, fig.height=3}
+
+data %>% 
+  group_by(mentalHealthImpact) %>% 
+  summarise(bodyAche = mean(bodyAche), 
+            headAche = mean(headAche),
+            diarrhea = mean(diarrhea),
+            breathing = mean(difficultyBreathing),
+            disorientation = mean(disorientation),
+            fatigue = mean(fatigue),
+            irritatedEyes = mean(irritatedEyes),
+            lossOfSmell = mean(lossOfSmell),
+            persistentCough = mean(persistentCough),
+            soreThroat = mean(soreThroat),
+            temperature = mean(temperature)) %>% 
+  gather(symptom, prob, bodyAche:temperature) %>% 
+  arrange(desc(prob)) %>%
+  ggplot(aes(x = reorder(symptom, prob), y = prob)) + 
+  geom_bar(stat = "identity", fill = 'red') +
+  facet_grid(.~mentalHealthImpact) +
+  coord_flip() +
+  theme_bw() +
+  labs(x = "Symptom", y = "Percentage", 
+       title = "Percentage of Symptoms  Distributed by Mental Health Impact")
+```
+\pagebreak
+
+It is worth analyzing the correlation of health issues and symptoms. The below graph clearly shows that individuals that have **chronic** or **some** health issues have emphasized symptoms such as fatigue and headache.
+
+```{r fig.width=7, fig.height=4}
+data %>% 
+  group_by(healthIssues) %>% 
+  summarise(bodyAche = mean(bodyAche), 
+            headAche = mean(headAche),
+            diarrhea = mean(diarrhea),
+            breathing = mean(difficultyBreathing),
+            disorientation = mean(disorientation),
+            fatigue = mean(fatigue),
+            irritatedEyes = mean(irritatedEyes),
+            lossOfSmell = mean(lossOfSmell),
+            persistentCough = mean(persistentCough),
+            soreThroat = mean(soreThroat),
+            temperature = mean(temperature)) %>% 
+  gather(symptom, prob, bodyAche:temperature) %>% 
+  arrange(desc(prob)) %>%
+  ggplot(aes(x = reorder(symptom, prob), y = prob)) + 
+  geom_bar(stat = "identity", fill = 'red') +
+  facet_grid(.~healthIssues) +
+  coord_flip() +
+  theme_bw() +
+  labs(x = "Symptom", y = "Percentage", 
+       title = "Percentage of Symptoms  Distributed by Health Issues")
+```
+
+
+# Summary
+
+From the analysis and the graphs, we can conclude that the virus does not impact individual's mental health. However, further investigations show that individuals with chronic or some health issues tend to have mental health issues. Moreover, analysis showed that individuals with health issues have same symptoms, such as headache and fatigue, as the ones who had mental health impact. Thus, mental health impact can be associated with health issues and symptoms like fatigue and headache. In other words, **some** or **chronic** health issues may lead to mental health issues.
