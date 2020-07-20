@@ -14,10 +14,8 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = F, message = F, warning = F, fig.align = "center", global.par = TRUE)
 library(data.table)
-library(tidyverse)
 library(openxlsx)
 library(RColorBrewer)
-library(patchwork)
 ```
 
 ```{r}
