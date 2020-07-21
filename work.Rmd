@@ -73,6 +73,7 @@ Nowadays, it is quite important to understand and analyze the pandemic and coron
 ## Data description
 
 The data for this analysis is provided by NetGenix (https://infogears.org/).
+Also here are the links to Github repository and webpage with the report (https://github.com/naroyerevan/covid-19-and-mental-health), (https://naroyerevan.github.io/covid-19-and-mental-health/)
 
 The data is collectd from individuals living in US showing virus test results, antibody test results, symptoms the individuals had and so on.
 
